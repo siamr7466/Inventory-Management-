@@ -8,10 +8,11 @@ const COLORS = ['#10b981', '#f59e0b', '#ef4444']; // Emerald, Amber, Red
 
 export default function Dashboard() {
     const [stats, setStats] = useState(null);
+    const [range, setRange] = useState('7d');
 
     useEffect(() => {
-        api.get('/dashboard/stats').then(res => setStats(res.data)).catch(console.error);
-    }, []);
+        api.get(`/dashboard/stats?range=${range}`).then(res => setStats(res.data)).catch(console.error);
+    }, [range]);
 
     if (!stats) return <div className="p-8 text-center text-gray-500">Loading Dashboard...</div>;
 
@@ -48,8 +49,15 @@ export default function Dashboard() {
                         <h3 className="font-bold text-lg flex items-center gap-2">
                             <TrendingUp size={20} className="text-primary" /> Sales Trend
                         </h3>
-                        <select className="input" style={{ width: 'auto', padding: '0.4rem 0.8rem' }}>
-                            <option>Last 7 Days</option>
+                        <select
+                            className="input"
+                            style={{ width: 'auto', padding: '0.4rem 0.8rem' }}
+                            value={range}
+                            onChange={(e) => setRange(e.target.value)}
+                        >
+                            <option value="7d">Last 7 Days</option>
+                            <option value="30d">Last 30 Days</option>
+                            <option value="all">Total Sales</option>
                         </select>
                     </div>
                     <div style={{ height: '320px' }}>

@@ -207,6 +207,8 @@ app.get('/api/transactions', auth(['admin']), async (req, res) => {
 // Dashboard Analytics
 app.get('/api/dashboard/stats', auth(['admin']), async (req, res) => {
     try {
+        const { range = '7d' } = req.query;
+
         const totalProducts = await Product.count();
         const products = await Product.findAll();
         const totalStock = products.reduce((acc, p) => acc + p.currentStock, 0);
@@ -219,18 +221,28 @@ app.get('/api/dashboard/stats', auth(['admin']), async (req, res) => {
             OutOfStock: products.filter(p => p.status === 'Out of Stock').length,
         };
 
-        // Real Trend Data Aggregation (Last 7 Days)
         const { Op } = require('sequelize');
-
-        // 7 days ago (Local Midnight)
         const today = new Date();
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(today.getDate() - 6);
-        sevenDaysAgo.setHours(0, 0, 0, 0);
+        let startDate = new Date();
+
+        if (range === '30d') {
+            startDate.setDate(today.getDate() - 29);
+        } else if (range === 'all') {
+            const firstTx = await StockTransaction.findOne({ order: [['date', 'ASC']] });
+            if (firstTx) {
+                startDate = new Date(firstTx.date);
+            } else {
+                startDate.setDate(today.getDate() - 6);
+            }
+        } else {
+            // Default 7 days
+            startDate.setDate(today.getDate() - 6);
+        }
+        startDate.setHours(0, 0, 0, 0);
 
         const transactions = await StockTransaction.findAll({
             where: {
-                date: { [Op.gte]: sevenDaysAgo }
+                date: { [Op.gte]: startDate }
             },
             include: [Product],
             order: [['date', 'ASC']]
@@ -239,22 +251,28 @@ app.get('/api/dashboard/stats', auth(['admin']), async (req, res) => {
         const trendMap = {};
         const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-        // Initialize last 7 days keys (using Local Date String)
-        for (let i = 0; i < 7; i++) {
-            const d = new Date(sevenDaysAgo);
+        // Initialize range keys
+        const diffInDays = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 3600 * 24)) + 1;
+        const limitCount = range === 'all' ? Math.min(diffInDays, 90) : diffInDays; // Avoid crashing on too many days
+
+        for (let i = 0; i < limitCount; i++) {
+            const d = new Date(startDate);
             d.setDate(d.getDate() + i);
-            const key = d.toLocaleDateString('en-CA'); // YYYY-MM-DD in Local Time
+            const key = d.toLocaleDateString('en-CA');
             const dayName = days[d.getDay()];
-            trendMap[key] = { name: dayName, sales: 0, stock: 0 };
+
+            // For 30d or all, showing month/day instead of Mon/Tue might be better
+            const label = range === '30d' || range === 'all'
+                ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                : dayName;
+
+            trendMap[key] = { name: label, sales: 0, stock: 0 };
         }
 
         transactions.forEach(t => {
             try {
                 const d = new Date(t.date);
-                if (isNaN(d.getTime())) return;
-
-                const key = d.toLocaleDateString('en-CA'); // Match key format
-
+                const key = d.toLocaleDateString('en-CA');
                 if (trendMap[key]) {
                     if (t.type === 'OUT') {
                         trendMap[key].sales += (t.quantity * (t.Product?.price || 0));
@@ -262,9 +280,7 @@ app.get('/api/dashboard/stats', auth(['admin']), async (req, res) => {
                         trendMap[key].stock += (t.quantity * (t.Product?.price || 0));
                     }
                 }
-            } catch (err) {
-                console.error('Trend Date error', err);
-            }
+            } catch (err) { }
         });
 
         const trendData = Object.values(trendMap);
