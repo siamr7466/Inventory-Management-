@@ -23,7 +23,8 @@ export default function Reports() {
 
     return (
         <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-12">
+
                 <div>
                     <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.03em' }}>
                         Inventory Reports

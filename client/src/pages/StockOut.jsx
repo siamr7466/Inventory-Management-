@@ -45,7 +45,7 @@ export default function StockOut() {
 
     return (
         <div style={{ maxWidth: '700px', margin: '0 auto', animation: 'fadeIn 0.5s ease-out' }}>
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-12">
                 <div>
                     <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.03em' }}>
                         Stock Out (Sales)

@@ -8,6 +8,8 @@ import Products from './pages/Products';
 import StockIn from './pages/StockIn';
 import StockOut from './pages/StockOut';
 import Approvals from './pages/Approvals';
+import Reports from './pages/Reports';
+import Settings from './pages/Settings';
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user, loading } = useAuth();
@@ -28,7 +30,9 @@ export default function App() {
         <Route path="products" element={<Products />} />
         <Route path="stock-in" element={<StockIn />} />
         <Route path="stock-out" element={<StockOut />} />
+        <Route path="reports" element={<Reports />} />
         <Route path="approvals" element={<ProtectedRoute adminOnly><Approvals /></ProtectedRoute>} />
+        <Route path="settings" element={<ProtectedRoute adminOnly><Settings /></ProtectedRoute>} />
       </Route>
     </Routes>
   );

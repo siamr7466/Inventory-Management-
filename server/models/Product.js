@@ -26,6 +26,10 @@ const Product = sequelize.define('Product', {
     barcode: {
         type: DataTypes.STRING,
         unique: true
+    },
+    imageUrl: {
+        type: DataTypes.STRING,
+        allowNull: true
     }
 });
 

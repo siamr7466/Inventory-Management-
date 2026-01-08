@@ -63,7 +63,7 @@ export default function Categories() {
 
     return (
         <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-12">
                 <div>
                     <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.03em' }}>Categories</h1>
                     <p className="text-gray-500">Manage your product grouping and hierarchy</p>
@@ -117,7 +117,7 @@ export default function Categories() {
                             <h3 className="font-bold text-xl mb-1 text-gray-900">{c.name}</h3>
                             <p className="text-gray-500 text-sm mb-6 line-clamp-2">{c.description || 'No detailed description provided for this category.'}</p>
 
-                            <div className="flex items-center justify-between mt-auto">
+                            <div className="flex items-center justify-between mb-12">
                                 <div className="flex items-center gap-2 text-primary font-bold text-sm">
                                     <Package size={16} />
                                     <span>{c.Products?.length || 0} Products</span>

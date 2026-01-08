@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Search, Trash2, Edit, Package, DollarSign, Barcode, Filter, ArrowUpDown } from 'lucide-react';
+import { Plus, Search, Trash2, Edit, Package, DollarSign, Barcode, Filter, ArrowUpDown, Image as ImageIcon, X } from 'lucide-react';
 
 export default function Products() {
     const { user } = useAuth();
@@ -10,6 +10,8 @@ export default function Products() {
     const [search, setSearch] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [imageFile, setImageFile] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
 
     // Form State
     const [formData, setFormData] = useState({ brand: '', modelName: '', categoryId: '', price: '', currentStock: '', barcode: '' });
@@ -38,12 +40,34 @@ export default function Products() {
         }
     };
 
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setImageFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        const data = new FormData();
+        Object.keys(formData).forEach(key => data.append(key, formData[key]));
+        if (imageFile) {
+            data.append('image', imageFile);
+        }
+
         try {
-            await api.post('/products', formData);
+            await api.post('/products', data, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
             setShowModal(false);
             setFormData({ brand: '', modelName: '', categoryId: '', price: '', currentStock: '', barcode: '' });
+            setImageFile(null);
+            setImagePreview(null);
             loadData();
         } catch (err) {
             alert(err.response?.data?.error || 'Failed to save product');
@@ -58,7 +82,7 @@ export default function Products() {
 
     return (
         <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-12"> {/* Increased margin to mb-12 */}
                 <div>
                     <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.03em' }}>Product Inventory</h1>
                     <p className="text-gray-500">Manage and track your mobile stock levels</p>
@@ -85,6 +109,7 @@ export default function Products() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
                         <thead>
                             <tr style={{ background: 'var(--bg-app)' }}>
+                                <th className="p-4 text-left font-bold text-gray-700">IMAGE</th>
                                 <th className="p-4 text-left font-bold text-gray-700">MODEL & BRAND</th>
                                 <th className="p-4 text-left font-bold text-gray-700">CATEGORY</th>
                                 <th className="p-4 text-left font-bold text-gray-700">UNIT PRICE</th>
@@ -96,15 +121,28 @@ export default function Products() {
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={user.role === 'admin' ? 6 : 5} className="p-12 text-center text-gray-400">Loading inventory...</td>
+                                    <td colSpan={user.role === 'admin' ? 7 : 6} className="p-12 text-center text-gray-400">Loading inventory...</td>
                                 </tr>
                             ) : filteredProducts.length === 0 ? (
                                 <tr>
-                                    <td colSpan={user.role === 'admin' ? 6 : 5} className="p-12 text-center text-gray-400">No products found matching your search.</td>
+                                    <td colSpan={user.role === 'admin' ? 7 : 6} className="p-12 text-center text-gray-400">No products found matching your search.</td>
                                 </tr>
                             ) : (
                                 filteredProducts.map(p => (
                                     <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }} className="hover:bg-gray-50 transition-colors">
+                                        <td className="p-4">
+                                            {p.imageUrl ? (
+                                                <img
+                                                    src={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${p.imageUrl}`}
+                                                    alt={p.modelName}
+                                                    style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '10px', background: '#f8fafc' }}
+                                                />
+                                            ) : (
+                                                <div style={{ width: '48px', height: '48px', background: '#f1f5f9', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                                                    <Package size={20} />
+                                                </div>
+                                            )}
+                                        </td>
                                         <td className="p-4">
                                             <div className="font-bold text-gray-900">{p.modelName}</div>
                                             <div className="text-xs text-gray-500">{p.brand} {p.barcode ? `• ${p.barcode}` : ''}</div>
@@ -145,12 +183,38 @@ export default function Products() {
 
             {showModal && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
-                    <div className="card" style={{ width: '100%', maxWidth: '550px', padding: '2rem', animation: 'slideUp 0.3s ease-out' }}>
+                    <div className="card" style={{ width: '100%', maxWidth: '550px', padding: '2rem', animation: 'slideUp 0.3s ease-out', maxHeight: '90vh', overflowY: 'auto' }}>
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-extrabold text-gray-900">Add New Product</h2>
                             <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 font-bold text-xl">&times;</button>
                         </div>
                         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                            <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl p-4 bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer relative">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                    onChange={handleImageChange}
+                                />
+                                {imagePreview ? (
+                                    <div className="relative w-full h-32">
+                                        <img src={imagePreview} alt="Preview" className="w-full h-full object-contain rounded-lg" />
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); setImagePreview(null); setImageFile(null); }}
+                                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center text-gray-400">
+                                        <ImageIcon size={32} className="mb-2" />
+                                        <span className="text-sm font-medium">Click to upload product image</span>
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-sm font-bold text-gray-700 mb-1 block">Brand</label>

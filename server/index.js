@@ -5,9 +5,30 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const auth = require('./middleware/auth');
 const app = express();
+const path = require('path');
+const multer = require('multer');
+const fs = require('fs');
 
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Ensure uploads directory exists
+if (!fs.existsSync('./uploads')) {
+    fs.mkdirSync('./uploads');
+}
+
+// Multer Storage Configuration
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        cb(null, Date.now() + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({ storage });
 
 const PORT = 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
@@ -77,11 +98,18 @@ app.get('/api/products', auth(), async (req, res) => {
     res.json(products);
 });
 
-app.post('/api/products', auth(['admin']), async (req, res) => {
+app.post('/api/products', auth(['admin']), upload.single('image'), async (req, res) => {
     try {
-        const product = await Product.create(req.body);
+        const data = { ...req.body };
+        if (req.file) {
+            data.imageUrl = `/uploads/${req.file.filename}`;
+        }
+        const product = await Product.create(data);
         res.json(product);
-    } catch (e) { res.status(400).json({ error: e.message }); }
+    } catch (e) {
+        console.error(e);
+        res.status(400).json({ error: e.message });
+    }
 });
 
 app.put('/api/products/:id', auth(['admin']), async (req, res) => {
