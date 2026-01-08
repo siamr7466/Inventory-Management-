@@ -230,10 +230,10 @@ app.get('/api/dashboard/stats', auth(['admin']), async (req, res) => {
 
         const transactions = await StockTransaction.findAll({
             where: {
-                createdAt: { [Op.gte]: sevenDaysAgo }
+                date: { [Op.gte]: sevenDaysAgo }
             },
             include: [Product],
-            order: [['createdAt', 'ASC']]
+            order: [['date', 'ASC']]
         });
 
         const trendMap = {};
@@ -250,7 +250,7 @@ app.get('/api/dashboard/stats', auth(['admin']), async (req, res) => {
 
         transactions.forEach(t => {
             try {
-                const d = new Date(t.createdAt);
+                const d = new Date(t.date);
                 if (isNaN(d.getTime())) return;
 
                 const key = d.toLocaleDateString('en-CA'); // Match key format
