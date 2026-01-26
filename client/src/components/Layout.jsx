@@ -12,9 +12,9 @@ export default function Layout() {
 
             <div className="flex-1 flex flex-col md-ml-250 transition-all duration-300" style={{ width: '100%' }}>
                 {/* Mobile Header */}
-                <div className="md-hidden flex items-center p-4 bg-white border-b border-gray-200 justify-between sticky top-0 z-30">
+                <div className="md-hidden flex items-center p-4 justify-between sticky top-0 z-30" style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
                     <div className="flex items-center">
-                        <button onClick={() => setMobileOpen(true)} className="p-2 ml-2 rounded hover:bg-gray-100" style={{ marginLeft: '-0.5rem' }}>
+                        <button onClick={() => setMobileOpen(true)} className="p-2 ml-2 rounded" style={{ marginLeft: '-0.5rem', transition: 'background 0.2s' }}>
                             <Menu size={24} color="var(--text-main)" />
                         </button>
                         <span className="ml-2 font-bold text-lg text-primary">INVENTORY</span>

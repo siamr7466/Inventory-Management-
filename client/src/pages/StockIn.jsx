@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
-import { Search, PlusCircle, Package, ArrowLeft, CheckCircle, Shield, User } from 'lucide-react';
+import { Search, PlusCircle, Package } from 'lucide-react';
 
 export default function StockIn() {
     const { user } = useAuth();
@@ -44,114 +44,97 @@ export default function StockIn() {
     );
 
     return (
-        <div style={{ maxWidth: '700px', margin: '0 auto', animation: 'fadeIn 0.5s ease-out' }}>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-12">
-                <div>
-                    <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.03em' }}>
-                        Stock In
-                    </h1>
-                    <p className="text-gray-500">Increase inventory count for products</p>
-                </div>
-                <div className={`badge ${user.role === 'admin' ? 'badge-success' : 'badge-warning'}`} style={{ padding: '0.6rem 1rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {user.role === 'admin' ? <Shield size={16} /> : <User size={16} />}
-                    <span className="font-bold">{user.role.toUpperCase()} MODE</span>
+        <div style={{ maxWidth: '600px', margin: '0 auto', animation: 'fadeIn 0.5s ease-out' }}>
+            <div className="mb-6">
+                <h1 className="text-2xl font-bold" style={{ color: 'var(--text-main)' }}>Stock In</h1>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Increase inventory count for products</p>
+                <div className={`badge ${user.role === 'admin' ? 'badge-success' : 'badge-warning'} mt-4`}>
+                    {user.role === 'admin' ? 'ADMIN MODE' : 'EMPLOYEE MODE'}
                 </div>
             </div>
 
-            <div className="card" style={{ padding: '2rem', border: '1px solid var(--border)' }}>
-                <div className="mb-8">
-                    <label className="text-sm font-extrabold text-gray-700 mb-3 block">1. SELECT PRODUCT</label>
-                    {!selectedProduct ? (
-                        <div className="flex flex-col gap-4">
-                            <div className="card" style={{ padding: '0.8rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'var(--bg-app)', border: '1px solid var(--border)' }}>
-                                <Search size={20} className="text-gray-400" />
-                                <input
-                                    className="outline-none w-full bg-transparent"
-                                    placeholder="Search by model or brand..."
-                                    value={search}
-                                    onChange={e => setSearch(e.target.value)}
-                                />
+            <div className="card">
+                <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                    <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider mb-4" style={{ color: 'var(--text-muted)' }}>1. Select Product</label>
+
+                        {/* Search Bar Section - Perfectly Centered Left Icon */}
+                        <div className="relative mb-4 group focus-within:text-primary transition-colors" style={{ color: 'var(--text-light)' }}>
+                            <div style={{ position: 'absolute', left: '14px', top: '0', bottom: '0', display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
+                                <Search size={18} style={{ color: 'inherit' }} />
                             </div>
-                            <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                            <input
+                                className="input"
+                                style={{ paddingLeft: '42px', background: 'var(--bg-app)', height: '48px', fontSize: '0.9rem' }}
+                                placeholder="Search by brand or model..."
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                            />
+                        </div>
+
+                        {selectedProduct ? (
+                            <div className="p-3 border rounded-xl flex justify-between items-center" style={{ borderColor: 'var(--primary)', background: 'var(--primary-light)' }}>
+                                <div>
+                                    <div className="font-bold" style={{ color: 'var(--primary)' }}>{selectedProduct.brand} {selectedProduct.modelName}</div>
+                                    <div className="text-xs" style={{ color: 'var(--primary)', opacity: 0.8 }}>Available: {selectedProduct.currentStock} pcs</div>
+                                </div>
+                                <button className="text-xs font-bold underline transition-opacity hover:opacity-70" onClick={() => setSelectedProduct(null)}>Change</button>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                                 {loading ? (
-                                    <div className="text-center p-8 text-gray-400">Loading products...</div>
+                                    <div className="text-center py-4 text-xs font-bold" style={{ color: 'var(--text-muted)' }}>Loading products...</div>
                                 ) : filtered.length === 0 ? (
-                                    <div className="text-center p-8 text-gray-400 bg-gray-50 rounded-xl">No matching products found</div>
+                                    <div className="text-center py-4 text-xs font-bold" style={{ color: 'var(--text-muted)' }}>No products found</div>
                                 ) : filtered.map(p => (
                                     <div
                                         key={p.id}
-                                        className="p-4 hover:bg-indigo-50 cursor-pointer border border-transparent hover:border-indigo-100 rounded-xl transition-all flex items-center justify-between group"
-                                        onClick={() => { setSelectedProduct(p); setSearch(''); }}
+                                        className="p-3 border rounded-xl cursor-pointer hover:border-primary transition-all flex items-center justify-between group"
+                                        style={{ borderColor: 'var(--border)', background: 'var(--bg-app)' }}
+                                        onClick={() => setSelectedProduct(p)}
                                     >
-                                        <div className="flex items-center gap-4">
-                                            <div style={{ padding: '10px', background: 'white', borderRadius: '10px', shadow: 'var(--shadow-sm)' }}>
-                                                <Package size={20} className="text-indigo-500" />
+                                        <div className="flex items-center gap-3">
+                                            <div className="transition-colors group-hover:bg-primary-light" style={{ padding: '8px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                                <Package size={16} className="text-primary" />
                                             </div>
                                             <div>
-                                                <div className="font-bold text-gray-900 group-hover:text-indigo-700">{p.brand} {p.modelName}</div>
-                                                <div className="text-xs text-gray-500 font-medium">Available: {p.currentStock} pcs</div>
+                                                <div className="font-bold text-sm" style={{ color: 'var(--text-main)' }}>{p.brand} {p.modelName}</div>
+                                                <div className="text-[10px]" style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Available: {p.currentStock} pcs</div>
                                             </div>
                                         </div>
-                                        <PlusCircle size={20} className="text-gray-300 group-hover:text-indigo-500 transition-colors" />
+                                        <PlusCircle size={18} className="text-gray-300 group-hover:text-primary transition-colors" />
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    ) : (
-                        <div className="p-5 bg-indigo-50 rounded-2xl flex justify-between items-center border border-indigo-100 shadow-sm animate-slideIn">
-                            <div className="flex items-center gap-4">
-                                <div style={{ padding: '12px', background: 'white', borderRadius: '12px' }}>
-                                    <Package size={24} className="text-indigo-600" />
-                                </div>
-                                <div>
-                                    <div className="font-extrabold text-indigo-900 text-lg">{selectedProduct.brand} {selectedProduct.modelName}</div>
-                                    <div className="text-sm text-indigo-600 font-bold">Current Stock: {selectedProduct.currentStock} units</div>
-                                </div>
-                            </div>
-                            <button className="btn text-sm hover:bg-white p-2 rounded-xl transition-colors" onClick={() => setSelectedProduct(null)}>
-                                <ArrowLeft size={16} className="mr-1" /> Change
-                            </button>
-                        </div>
-                    )}
-                </div>
-
-                <form onSubmit={handleSubmit} style={{ opacity: selectedProduct ? 1 : 0.5, pointerEvents: selectedProduct ? 'auto' : 'none', transition: 'all 0.3s' }}>
-                    <div className="mb-6">
-                        <label className="text-sm font-extrabold text-gray-700 mb-3 block">2. TRANSACTION DETAILS</label>
-                        <div className="flex flex-col gap-1">
-                            <input
-                                type="number"
-                                className="input"
-                                style={{ fontSize: '1.2rem', padding: '1rem', fontWeight: 700 }}
-                                placeholder="Enter Quantity (pcs)"
-                                min="1"
-                                required
-                                value={quantity}
-                                onChange={e => setQuantity(e.target.value)}
-                            />
-                            <p className="text-xs text-gray-500 mt-2 px-1">
-                                {user.role === 'admin' ?
-                                    'This will immediately update the database stock count.' :
-                                    'This will create a request that requires admin approval.'}
-                            </p>
-                        </div>
+                        )}
                     </div>
-                    <button type="submit" className="btn btn-primary w-full" style={{ padding: '1rem', borderRadius: '14px', fontSize: '1.1rem' }} disabled={!selectedProduct}>
-                        <CheckCircle size={20} className="mr-2" />
-                        {user.role === 'admin' ? 'Confirm Stock Insertion' : 'Send Approval Request'}
+
+                    <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider mb-4" style={{ color: 'var(--text-muted)' }}>2. Transaction Details</label>
+                        <input
+                            type="number"
+                            className="input"
+                            style={{ height: '48px', background: 'var(--bg-app)' }}
+                            placeholder="Enter Quantity (pcs)"
+                            min="1"
+                            required
+                            value={quantity}
+                            onChange={e => setQuantity(e.target.value)}
+                        />
+                    </div>
+
+                    <button type="submit" className="btn btn-primary w-full h-[48px] rounded-xl font-bold" disabled={!selectedProduct}>
+                        {user.role === 'admin' ? 'Update Stock' : 'Request Approval'}
                     </button>
                 </form>
             </div>
 
             <style dangerouslySetInnerHTML={{
                 __html: `
-                @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-                @keyframes slideIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-                .animate-slideIn { animation: slideIn 0.3s ease-out; }
-                .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
             `}} />
         </div>
     );

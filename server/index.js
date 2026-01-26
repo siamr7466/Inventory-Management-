@@ -1,34 +1,14 @@
 const express = require('express');
 const cors = require('cors');
+require('dotenv').config();
 const { sequelize, User, Category, Product, StockTransaction, ApprovalRequest } = require('./models');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const auth = require('./middleware/auth');
 const app = express();
-const path = require('path');
-const multer = require('multer');
-const fs = require('fs');
 
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// Ensure uploads directory exists
-if (!fs.existsSync('./uploads')) {
-    fs.mkdirSync('./uploads');
-}
-
-// Multer Storage Configuration
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/');
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname));
-    }
-});
-
-const upload = multer({ storage });
 
 const PORT = 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
@@ -51,13 +31,29 @@ sequelize.sync({ force: false }).then(async () => {
 
 // Auth Routes
 app.post('/api/login', async (req, res) => {
-    const { email, password } = req.body;
-    const user = await User.findOne({ where: { email } });
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-        return res.status(401).json({ message: 'Invalid credentials' });
+    try {
+        const { email, password } = req.body;
+        console.log(`Login attempt for: ${email}`);
+        const user = await User.findOne({ where: { email } });
+
+        if (!user) {
+            console.log(`User not found: ${email}`);
+            return res.status(401).json({ message: 'Invalid credentials' });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            console.log(`Invalid password for: ${email}`);
+            return res.status(401).json({ message: 'Invalid credentials' });
+        }
+
+        console.log(`Login successful for: ${email}`);
+        const token = jwt.sign({ id: user.id, role: user.role, name: user.name }, JWT_SECRET, { expiresIn: '1d' });
+        res.json({ token, user: { id: user.id, name: user.name, role: user.role, email: user.email } });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ message: 'Internal server error' });
     }
-    const token = jwt.sign({ id: user.id, role: user.role, name: user.name }, JWT_SECRET, { expiresIn: '1d' });
-    res.json({ token, user: { id: user.id, name: user.name, role: user.role, email: user.email } });
 });
 
 app.post('/api/users', auth(['admin']), async (req, res) => {
@@ -76,7 +72,7 @@ app.get('/api/users', auth(['admin']), async (req, res) => {
 
 // Category Routes
 app.get('/api/categories', auth(), async (req, res) => {
-    const categories = await Category.findAll({ include: Product }); // Include to count products
+    const categories = await Category.findAll({ include: { model: Product, as: 'Products' } }); // Include to count products
     res.json(categories);
 });
 
@@ -94,20 +90,15 @@ app.delete('/api/categories/:id', auth(['admin']), async (req, res) => {
 
 // Product Routes
 app.get('/api/products', auth(), async (req, res) => {
-    const products = await Product.findAll({ include: Category });
+    const products = await Product.findAll({ include: { model: Category, as: 'Category' } });
     res.json(products);
 });
 
-app.post('/api/products', auth(['admin']), upload.single('image'), async (req, res) => {
+app.post('/api/products', auth(['admin']), async (req, res) => {
     try {
-        const data = { ...req.body };
-        if (req.file) {
-            data.imageUrl = `/uploads/${req.file.filename}`;
-        }
-        const product = await Product.create(data);
+        const product = await Product.create(req.body);
         res.json(product);
     } catch (e) {
-        console.error(e);
         res.status(400).json({ error: e.message });
     }
 });
@@ -177,7 +168,7 @@ app.post('/api/approval/request', auth(['employee']), async (req, res) => {
 app.get('/api/approval/pending', auth(['admin']), async (req, res) => {
     const requests = await ApprovalRequest.findAll({
         where: { status: 'PENDING' },
-        include: [Product, { model: User, as: 'Requester' }]
+        include: [{ model: Product, as: 'Product' }, { model: User, as: 'Requester' }]
     });
     res.json(requests);
 });
@@ -226,7 +217,7 @@ app.post('/api/approval/action', auth(['admin']), async (req, res) => {
 // Reports & Analytics
 app.get('/api/transactions', auth(['admin']), async (req, res) => {
     const transactions = await StockTransaction.findAll({
-        include: [Product, User],
+        include: [{ model: Product, as: 'Product' }, { model: User, as: 'User' }],
         order: [['createdAt', 'DESC']]
     });
     res.json(transactions);
@@ -272,7 +263,7 @@ app.get('/api/dashboard/stats', auth(['admin']), async (req, res) => {
             where: {
                 date: { [Op.gte]: startDate }
             },
-            include: [Product],
+            include: [{ model: Product, as: 'Product' }],
             order: [['date', 'ASC']]
         });
 
@@ -294,7 +285,7 @@ app.get('/api/dashboard/stats', auth(['admin']), async (req, res) => {
                 ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                 : dayName;
 
-            trendMap[key] = { name: label, sales: 0, stock: 0 };
+            trendMap[key] = { name: label, sales: 0, stock: 0, unitsSold: 0, unitsAdded: 0 };
         }
 
         transactions.forEach(t => {
@@ -304,8 +295,10 @@ app.get('/api/dashboard/stats', auth(['admin']), async (req, res) => {
                 if (trendMap[key]) {
                     if (t.type === 'OUT') {
                         trendMap[key].sales += (t.quantity * (t.Product?.price || 0));
+                        trendMap[key].unitsSold += t.quantity;
                     } else if (t.type === 'IN') {
                         trendMap[key].stock += (t.quantity * (t.Product?.price || 0));
+                        trendMap[key].unitsAdded += t.quantity;
                     }
                 }
             } catch (err) { }

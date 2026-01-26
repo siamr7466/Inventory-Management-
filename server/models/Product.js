@@ -33,7 +33,4 @@ const Product = sequelize.define('Product', {
     }
 });
 
-Product.belongsTo(Category);
-Category.hasMany(Product);
-
 module.exports = Product;

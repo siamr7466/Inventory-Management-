@@ -13,7 +13,21 @@ import Settings from './pages/Settings';
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user, loading } = useAuth();
-  if (loading) return <div>Loading...</div>;
+  if (loading) return (
+    <div style={{
+      height: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'var(--bg-app)',
+      color: 'var(--text-muted)',
+      flexDirection: 'column',
+      gap: '1rem'
+    }}>
+      <div className="loading-spinner"></div>
+      <span style={{ fontWeight: 600, letterSpacing: '0.05em' }}>VERIFYING SESSION...</span>
+    </div>
+  );
   if (!user) return <Navigate to="/login" />;
   if (adminOnly && user.role !== 'admin') return <Navigate to="/" />;
   return children;

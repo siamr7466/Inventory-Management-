@@ -1,11 +1,13 @@
 import { useRef, useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, Tag, ArrowUpCircle, ArrowDownCircle, CheckSquare, BarChart, Settings, LogOut, X } from 'lucide-react';
+import { LayoutDashboard, Package, Tag, ArrowUpCircle, ArrowDownCircle, CheckSquare, BarChart, Settings, LogOut, X, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Sidebar({ mobileOpen, setMobileOpen }) {
     const location = useLocation();
     const { logout, user } = useAuth();
+    const { theme, toggleTheme } = useTheme();
 
     const isActive = (path) => location.pathname === path;
 
@@ -95,7 +97,46 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                     ))}
                 </div>
 
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.5rem', marginTop: '1rem' }}>
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+                    <button
+                        onClick={toggleTheme}
+                        style={{
+                            ...linkStyle(false),
+                            width: '100%',
+                            marginBottom: '1rem',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            background: 'var(--bg-app)',
+                            border: '1px solid var(--border)'
+                        }}
+                    >
+                        <div className="flex items-center">
+                            <span style={{ marginRight: '0.75rem', display: 'flex' }}>
+                                {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+                            </span>
+                            <span style={{ fontSize: '0.9rem' }}>{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
+                        </div>
+                        <div style={{
+                            width: '32px',
+                            height: '16px',
+                            background: theme === 'dark' ? 'var(--primary)' : '#cbd5e1',
+                            borderRadius: '16px',
+                            position: 'relative',
+                            transition: 'all 0.3s'
+                        }}>
+                            <div style={{
+                                width: '12px',
+                                height: '12px',
+                                background: 'white',
+                                borderRadius: '50%',
+                                position: 'absolute',
+                                top: '2px',
+                                left: theme === 'dark' ? '18px' : '2px',
+                                transition: 'all 0.3s'
+                            }} />
+                        </div>
+                    </button>
+
                     <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', padding: '0.5rem', background: 'var(--bg-app)', borderRadius: '12px' }}>
                         <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '0.75rem', fontWeight: 600, fontSize: '1rem' }}>
                             {user?.name?.[0]}
@@ -105,7 +146,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{user?.role}</div>
                         </div>
                     </div>
-                    <button onClick={logout} style={{ ...linkStyle(false), width: '100%', color: 'var(--danger)', justifyContent: 'center', background: 'var(--danger-bg)' }}>
+                    <button onClick={logout} style={{ ...linkStyle(false), width: '100%', color: 'var(--danger-text)', justifyContent: 'center', background: 'var(--danger-bg)' }}>
                         <LogOut size={20} style={{ marginRight: '0.5rem' }} />
                         Logout
                     </button>

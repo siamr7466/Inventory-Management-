@@ -1,5 +1,5 @@
 const { sequelize, User, Category, Product, StockTransaction, ApprovalRequest } = require('./models');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 const seed = async () => {
     await sequelize.sync({ force: true });
