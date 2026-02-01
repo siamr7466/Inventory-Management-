@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, Tag, ArrowUpCircle, ArrowDownCircle, CheckSquare, BarChart, Settings, LogOut, X, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Package, Tag, ArrowUpCircle, ArrowDownCircle, CheckSquare, BarChart, Settings, LogOut, X, Sun, Moon, Boxes } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -73,15 +73,17 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
             >
                 <div style={{ marginBottom: '2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--primary)', fontWeight: 800, fontSize: '1.4rem' }}>
                     <div className="flex items-center gap-2">
-                        <div style={{ padding: '6px', background: 'var(--primary)', borderRadius: '8px', color: 'white', display: 'flex' }}>
-                            <Package size={24} />
+                        <div style={{ padding: '7px', background: 'linear-gradient(135deg, var(--primary), #6366f1)', borderRadius: '10px', color: 'white', display: 'flex', boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)' }}>
+                            <Boxes size={22} />
                         </div>
-                        <span style={{ letterSpacing: '-0.03em' }}>INVENTORY</span>
+                        <span style={{ letterSpacing: '-0.04em', fontWeight: 900, background: 'linear-gradient(to right, var(--text-main), var(--primary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: '1.1rem' }}>INVENTORY MANAGEMENT</span>
+
                     </div>
                     <button className="md-hidden" onClick={() => setMobileOpen(false)} style={{ padding: '4px' }}>
                         <X size={24} color="var(--text-muted)" />
                     </button>
                 </div>
+
 
                 <div style={{ flex: 1, overflowY: 'auto' }}>
                     {links.map((link) => (
@@ -98,45 +100,6 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                 </div>
 
                 <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
-                    <button
-                        onClick={toggleTheme}
-                        style={{
-                            ...linkStyle(false),
-                            width: '100%',
-                            marginBottom: '1rem',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            background: 'var(--bg-app)',
-                            border: '1px solid var(--border)'
-                        }}
-                    >
-                        <div className="flex items-center">
-                            <span style={{ marginRight: '0.75rem', display: 'flex' }}>
-                                {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
-                            </span>
-                            <span style={{ fontSize: '0.9rem' }}>{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
-                        </div>
-                        <div style={{
-                            width: '32px',
-                            height: '16px',
-                            background: theme === 'dark' ? 'var(--primary)' : '#cbd5e1',
-                            borderRadius: '16px',
-                            position: 'relative',
-                            transition: 'all 0.3s'
-                        }}>
-                            <div style={{
-                                width: '12px',
-                                height: '12px',
-                                background: 'white',
-                                borderRadius: '50%',
-                                position: 'absolute',
-                                top: '2px',
-                                left: theme === 'dark' ? '18px' : '2px',
-                                transition: 'all 0.3s'
-                            }} />
-                        </div>
-                    </button>
-
                     <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', padding: '0.5rem', background: 'var(--bg-app)', borderRadius: '12px' }}>
                         <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '0.75rem', fontWeight: 600, fontSize: '1rem' }}>
                             {user?.name?.[0]}
@@ -146,12 +109,9 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{user?.role}</div>
                         </div>
                     </div>
-                    <button onClick={logout} style={{ ...linkStyle(false), width: '100%', color: 'var(--danger-text)', justifyContent: 'center', background: 'var(--danger-bg)' }}>
-                        <LogOut size={20} style={{ marginRight: '0.5rem' }} />
-                        Logout
-                    </button>
                 </div>
             </div>
         </>
     );
 }
+

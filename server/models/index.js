@@ -4,8 +4,9 @@ const Category = require('./Category');
 const Product = require('./Product');
 const StockTransaction = require('./StockTransaction');
 const ApprovalRequest = require('./ApprovalRequest');
+const SalesTarget = require('./SalesTarget');
+const Notification = require('./Notification');
 
-// Associations
 // Associations
 Product.belongsTo(Category, { foreignKey: 'CategoryId', as: 'Category' });
 Category.hasMany(Product, { foreignKey: 'CategoryId', as: 'Products' });
@@ -22,11 +23,19 @@ Product.hasMany(ApprovalRequest, { foreignKey: 'productId', as: 'ApprovalRequest
 ApprovalRequest.belongsTo(User, { foreignKey: 'RequesterId', as: 'Requester' });
 User.hasMany(ApprovalRequest, { foreignKey: 'RequesterId', as: 'Requests' });
 
+SalesTarget.belongsTo(User, { foreignKey: 'userId', as: 'User' });
+User.hasMany(SalesTarget, { foreignKey: 'userId', as: 'SalesTargets' });
+
+Notification.belongsTo(User, { foreignKey: 'userId', as: 'User' });
+User.hasMany(Notification, { foreignKey: 'userId', as: 'Notifications' });
+
 module.exports = {
     sequelize,
     User,
     Category,
     Product,
     StockTransaction,
-    ApprovalRequest
+    ApprovalRequest,
+    SalesTarget,
+    Notification
 };

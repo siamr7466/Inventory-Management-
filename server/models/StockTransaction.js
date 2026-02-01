@@ -12,13 +12,19 @@ const StockTransaction = sequelize.define('StockTransaction', {
         type: DataTypes.ENUM('IN', 'OUT'),
         allowNull: false
     },
+    unitPrice: { // The price at which the transaction occurred (cost for IN, sale for OUT)
+        type: DataTypes.FLOAT,
+        defaultValue: 0.0
+    },
+    costPriceAtTime: { // The cost price of the product at the time of the transaction (for profit calculation)
+        type: DataTypes.FLOAT,
+        defaultValue: 0.0
+    },
     date: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW
     }
 });
 
-StockTransaction.belongsTo(Product);
-StockTransaction.belongsTo(User);
 
 module.exports = StockTransaction;

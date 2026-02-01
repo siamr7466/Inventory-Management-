@@ -18,7 +18,5 @@ const ApprovalRequest = sequelize.define('ApprovalRequest', {
     }
 });
 
-ApprovalRequest.belongsTo(Product);
-ApprovalRequest.belongsTo(User, { as: 'Requester' });
 
 module.exports = ApprovalRequest;

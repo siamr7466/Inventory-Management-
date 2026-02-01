@@ -23,14 +23,8 @@ export default function Login() {
     };
 
     return (
-        <div className="flex items-center justify-center p-4 relative" style={{ minHeight: '100vh', background: 'var(--bg-app)' }}>
-            <button
-                onClick={toggleTheme}
-                className="absolute top-8 right-8 p-3 rounded-2xl border transition-all hover:scale-105"
-                style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-main)' }}
-            >
-                {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
-            </button>
+        <div className="flex items-center justify-center p-4" style={{ minHeight: '100vh', background: 'var(--bg-app)' }}>
+
             <div className="card" style={{ maxWidth: '400px', width: '100%' }}>
                 <h2 style={{ marginBottom: '1.5rem', textAlign: 'center', color: 'var(--text-main)' }}>Sign In</h2>
                 {error && <div style={{ color: 'var(--danger-text)', background: 'var(--danger-bg)', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem', textAlign: 'center', fontSize: '0.9rem' }}>{error}</div>}
@@ -57,9 +51,7 @@ export default function Login() {
                     </div>
                     <button type="submit" className="btn btn-primary" style={{ marginTop: '0.5rem' }}>Login</button>
                 </form>
-                <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
-                    <div>Admin: admin@store.com / admin123</div>
-                </div>
+
             </div>
         </div>
     );

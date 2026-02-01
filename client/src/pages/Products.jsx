@@ -19,9 +19,11 @@ export default function Products() {
         modelName: '',
         categoryId: '',
         price: '',
+        costPrice: '',
         currentStock: '',
         barcode: ''
     });
+
 
     useEffect(() => {
         loadData();
@@ -60,8 +62,9 @@ export default function Products() {
         try {
             await api.post('/products', formData);
             setShowModal(false);
-            setFormData({ brand: '', modelName: '', categoryId: '', price: '', currentStock: '', barcode: '' });
+            setFormData({ brand: '', modelName: '', categoryId: '', price: '', costPrice: '', currentStock: '', barcode: '' });
             loadData();
+
         } catch (err) {
             alert(err.response?.data?.error || 'Failed to save product');
         }
@@ -132,8 +135,10 @@ export default function Products() {
                             <tr style={{ background: 'var(--bg-app)', borderBottom: '1px solid var(--border)' }}>
                                 <th className="p-4 text-left font-bold" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>MODEL & BRAND</th>
                                 <th className="p-4 text-left font-bold" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CATEGORY</th>
-                                <th className="p-4 text-left font-bold" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>UNIT PRICE</th>
+                                {user.role === 'admin' && <th className="p-4 text-left font-bold" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>COST PRICE</th>}
+                                <th className="p-4 text-left font-bold" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>SALE PRICE</th>
                                 <th className="p-4 text-left font-bold" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>STOCK</th>
+
                                 <th className="p-4 text-left font-bold" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>STATUS</th>
                                 {user.role === 'admin' && <th className="p-4 text-right font-bold" style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ACTIONS</th>}
                             </tr>
@@ -141,11 +146,11 @@ export default function Products() {
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={user.role === 'admin' ? 6 : 5} className="p-12 text-center text-muted">Loading...</td>
+                                    <td colSpan={user.role === 'admin' ? 7 : 5} className="p-12 text-center text-muted">Loading...</td>
                                 </tr>
                             ) : filteredProducts.length === 0 ? (
                                 <tr>
-                                    <td colSpan={user.role === 'admin' ? 6 : 5} className="p-12 text-center text-muted">No products found.</td>
+                                    <td colSpan={user.role === 'admin' ? 7 : 5} className="p-12 text-center text-muted">No products found.</td>
                                 </tr>
                             ) : (
                                 filteredProducts.map(p => (
@@ -159,7 +164,9 @@ export default function Products() {
                                                 {p.Category?.name || 'GENERIC'}
                                             </span>
                                         </td>
+                                        {user.role === 'admin' && <td className="p-4 font-bold" style={{ color: 'var(--text-muted)' }}>৳{p.costPrice?.toLocaleString()}</td>}
                                         <td className="p-4 font-bold" style={{ color: 'var(--text-main)' }}>৳{p.price.toLocaleString()}</td>
+
                                         <td className="p-4">
                                             <div className="flex items-center gap-2" style={{ color: 'var(--text-main)' }}>
                                                 <span className="font-bold">{p.currentStock}</span>
@@ -210,13 +217,17 @@ export default function Products() {
                             </div>
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label className="block text-xs font-bold text-muted uppercase mb-2">Price (৳)</label>
-                                    <input type="number" placeholder="0.00" className="input" required value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} />
+                                    <label className="block text-xs font-bold text-muted uppercase mb-2">Cost Price (৳)</label>
+                                    <input type="number" placeholder="Buy Price" className="input" required value={formData.costPrice} onChange={e => setFormData({ ...formData, costPrice: e.target.value })} />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-muted uppercase mb-2">Initial Stock</label>
-                                    <input type="number" placeholder="0" className="input" required value={formData.currentStock} onChange={e => setFormData({ ...formData, currentStock: e.target.value })} />
+                                    <label className="block text-xs font-bold text-muted uppercase mb-2">Sale Price (৳)</label>
+                                    <input type="number" placeholder="Sell Price" className="input" required value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} />
                                 </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-muted uppercase mb-2">Initial Stock</label>
+                                <input type="number" placeholder="0" className="input" required value={formData.currentStock} onChange={e => setFormData({ ...formData, currentStock: e.target.value })} />
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-muted uppercase mb-2">Barcode (Optional)</label>

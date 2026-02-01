@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import Header from './Header';
 import Sidebar from './Sidebar';
 import { Menu } from 'lucide-react';
 
@@ -11,6 +12,7 @@ export default function Layout() {
             <Sidebar mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
 
             <div className="flex-1 flex flex-col md-ml-250 transition-all duration-300" style={{ width: '100%' }}>
+                <Header />
                 {/* Mobile Header */}
                 <div className="md-hidden flex items-center p-4 justify-between sticky top-0 z-30" style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
                     <div className="flex items-center">

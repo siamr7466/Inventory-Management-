@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
 import api from '../api';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, AreaChart, Area, CartesianGrid } from 'recharts';
-import { Package, DollarSign, Layers, AlertCircle, TrendingUp, ArrowUpRight } from 'lucide-react';
+import { Package, DollarSign, Layers, AlertCircle, TrendingUp, ArrowUpRight, Target, CheckCircle2, ChevronRight } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+
 
 const COLORS = ['#10b981', '#f59e0b', '#ef4444']; // Emerald, Amber, Red
 
 export default function Dashboard() {
+    const { user } = useAuth();
     const [stats, setStats] = useState(null);
+
     const [range, setRange] = useState('7d');
     const [viewMode, setViewMode] = useState('value');
 
@@ -49,11 +53,20 @@ export default function Dashboard() {
 
             {/* Stat Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-                <StatCard title="Inventory Value" value={`৳${stats.stockValue.toLocaleString()}`} icon={<DollarSign size={22} />} color="emerald" trend="+8.4%" />
+                <StatCard title="Inventory Value" value={`৳${stats.stockValue.toLocaleString()}`} icon={<DollarSign size={22} />} color="emerald" />
                 <StatCard title="Total Products" value={stats.totalProducts} icon={<Package size={22} />} color="indigo" />
-                <StatCard title="Total Stock Units" value={stats.totalStock.toLocaleString()} icon={<Layers size={22} />} color="purple" trend="+5.2%" />
+                <StatCard title="Total Stock Units" value={stats.totalStock.toLocaleString()} icon={<Layers size={22} />} color="purple" />
                 <StatCard title="Pending Review" value={stats.pendingApprovals} icon={<AlertCircle size={22} />} color="amber" />
             </div>
+
+            {/* Sales Progress Section for Employees */}
+            {!user.role === 'admin' && stats.monthlyStats && (
+                <SalesProgress stats={stats.monthlyStats} />
+            )}
+            {user.role === 'employee' && stats.monthlyStats && (
+                <SalesProgress stats={stats.monthlyStats} />
+            )}
+
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Performance Chart */}
@@ -227,3 +240,79 @@ function StatCard({ title, value, icon, color, trend }) {
         </div>
     );
 }
+
+function SalesProgress({ stats }) {
+    const { unitsSold, revenue, target } = stats;
+
+    // Progress for Units
+    const unitTarget = target?.units || 0;
+    const unitPercentage = unitTarget > 0 ? Math.min((unitsSold / unitTarget) * 100, 100) : 0;
+    const unitsRemaining = Math.max(unitTarget - unitsSold, 0);
+
+    // Progress for Value
+    const valTarget = target?.value || 0;
+    const valPercentage = valTarget > 0 ? Math.min((revenue / valTarget) * 100, 100) : 0;
+    const valRemaining = Math.max(valTarget - revenue, 0);
+
+    return (
+        <div className="mb-10 animate-fadeIn">
+            <div className="flex items-center gap-3 mb-6">
+                <div style={{ padding: '8px', background: 'var(--primary-light)', borderRadius: '10px', color: 'var(--primary)', display: 'flex' }}>
+                    <Target size={20} />
+                </div>
+                <h3 className="font-bold text-xl" style={{ color: 'var(--text-main)', margin: 0 }}>Monthly Sales Targets</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Units Progress */}
+                <div className="card" style={{ padding: '1.5rem' }}>
+                    <div className="flex justify-between items-end mb-4">
+                        <div>
+                            <div className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">UNITS SOLD</div>
+                            <div className="text-2xl font-black" style={{ color: 'var(--text-main)' }}>{unitsSold} <span style={{ fontSize: '12px', opacity: 0.5 }}>/ {unitTarget || 'No Target'}</span></div>
+                        </div>
+                        <div className="text-right">
+                            <div className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">{Math.round(unitPercentage)}% COMPLETE</div>
+                        </div>
+                    </div>
+
+                    <div style={{ height: '10px', background: 'var(--bg-app)', borderRadius: '20px', overflow: 'hidden', marginBottom: '1rem' }}>
+                        <div style={{ width: `${unitPercentage}%`, height: '100%', background: 'linear-gradient(90deg, var(--primary), #818cf8)', transition: 'width 1s var(--ease)' }}></div>
+                    </div>
+
+                    {unitTarget > 0 && (
+                        <div className="flex items-center gap-2 text-xs font-bold" style={{ color: unitsRemaining === 0 ? 'var(--success-text)' : 'var(--text-muted)' }}>
+                            {unitsRemaining === 0 ? <CheckCircle2 size={14} className="text-success" /> : <ChevronRight size={14} />}
+                            {unitsRemaining === 0 ? 'Monthly Target Achieved!' : `Sell ${unitsRemaining} more units to reach goal`}
+                        </div>
+                    )}
+                </div>
+
+                {/* Revenue Progress */}
+                <div className="card" style={{ padding: '1.5rem' }}>
+                    <div className="flex justify-between items-end mb-4">
+                        <div>
+                            <div className="text-[10px] font-bold text-muted uppercase tracking-widest mb-1">REVENUE GENERATED</div>
+                            <div className="text-2xl font-black" style={{ color: 'var(--text-main)' }}>৳{revenue.toLocaleString()} <span style={{ fontSize: '12px', opacity: 0.5 }}>/ ৳{(valTarget || 0).toLocaleString()}</span></div>
+                        </div>
+                        <div className="text-right">
+                            <div className="text-[10px] font-bold text-emerald uppercase tracking-widest mb-1" style={{ color: '#10b981' }}>{Math.round(valPercentage)}% COMPLETE</div>
+                        </div>
+                    </div>
+
+                    <div style={{ height: '10px', background: 'var(--bg-app)', borderRadius: '20px', overflow: 'hidden', marginBottom: '1rem' }}>
+                        <div style={{ width: `${valPercentage}%`, height: '100%', background: 'linear-gradient(90deg, #10b981, #34d399)', transition: 'width 1s var(--ease)' }}></div>
+                    </div>
+
+                    {valTarget > 0 && (
+                        <div className="flex items-center gap-2 text-xs font-bold" style={{ color: valRemaining === 0 ? 'var(--success-text)' : 'var(--text-muted)' }}>
+                            {valRemaining === 0 ? <CheckCircle2 size={14} className="text-success" /> : <ChevronRight size={14} />}
+                            {valRemaining === 0 ? 'Revenue Target Achieved!' : `Generate ৳${Math.round(valRemaining).toLocaleString()} more to reach goal`}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
