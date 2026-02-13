@@ -17,7 +17,7 @@ export default function Products() {
     const [formData, setFormData] = useState({
         brand: '',
         modelName: '',
-        categoryId: '',
+        CategoryId: '',
         price: '',
         costPrice: '',
         currentStock: '',
@@ -62,7 +62,7 @@ export default function Products() {
         try {
             await api.post('/products', formData);
             setShowModal(false);
-            setFormData({ brand: '', modelName: '', categoryId: '', price: '', costPrice: '', currentStock: '', barcode: '' });
+            setFormData({ brand: '', modelName: '', CategoryId: '', price: '', costPrice: '', currentStock: '', barcode: '' });
             loadData();
 
         } catch (err) {
@@ -74,7 +74,7 @@ export default function Products() {
         const matchesSearch = p.modelName.toLowerCase().includes(search.toLowerCase()) ||
             p.brand.toLowerCase().includes(search.toLowerCase()) ||
             p.barcode?.includes(search);
-        const matchesCategory = selectedCategory === 'all' || p.categoryId === parseInt(selectedCategory);
+        const matchesCategory = selectedCategory === 'all' || p.CategoryId === parseInt(selectedCategory);
         return matchesSearch && matchesCategory;
     });
 
@@ -210,7 +210,7 @@ export default function Products() {
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-muted uppercase mb-2">Category</label>
-                                <select className="input" required value={formData.categoryId} onChange={e => setFormData({ ...formData, categoryId: e.target.value })}>
+                                <select className="input" required value={formData.CategoryId} onChange={e => setFormData({ ...formData, CategoryId: e.target.value })}>
                                     <option value="">Select Category</option>
                                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>

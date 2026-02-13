@@ -4,18 +4,32 @@ const path = require('path');
 let sequelize;
 
 if (process.env.DATABASE_URL) {
-  // Production: PostgreSQL (Supabase, Render, Railway, etc.)
-  sequelize = new Sequelize(process.env.DATABASE_URL, {
-    dialect: 'postgres',
-    protocol: 'postgres',
-    dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false // Required for Supabase/Render/AWS
-      }
-    },
-    logging: false
-  });
+  const isPostgres = process.env.DATABASE_URL.startsWith('postgres');
+  const isMysql = process.env.DATABASE_URL.startsWith('mysql');
+
+  if (isPostgres) {
+    sequelize = new Sequelize(process.env.DATABASE_URL, {
+      dialect: 'postgres',
+      protocol: 'postgres',
+      dialectOptions: {
+        ssl: {
+          require: true,
+          rejectUnauthorized: false
+        }
+      },
+      logging: false
+    });
+  } else if (isMysql) {
+    sequelize = new Sequelize(process.env.DATABASE_URL, {
+      dialect: 'mysql',
+      logging: false
+    });
+  } else {
+    // Default to existing logic or handle other types
+    sequelize = new Sequelize(process.env.DATABASE_URL, {
+      logging: false
+    });
+  }
 } else {
   // Local: SQLite
   sequelize = new Sequelize({

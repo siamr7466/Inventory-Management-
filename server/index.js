@@ -23,7 +23,7 @@ const PORT = 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
 // Sync DB and Seed Admin
-sequelize.sync({ force: false }).then(async () => {
+sequelize.sync({ alter: true }).then(async () => {
     console.log('Database synced');
     const adminExists = await User.findOne({ where: { email: 'admin@store.com' } });
     if (!adminExists) {
@@ -106,6 +106,32 @@ app.post('/api/users', auth(['admin']), async (req, res) => {
 app.get('/api/users', auth(['admin']), async (req, res) => {
     const users = await User.findAll({ attributes: { exclude: ['password'] } });
     res.json(users);
+});
+
+app.delete('/api/users/:id', auth(['admin']), async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Prevent deleting self
+        if (parseInt(id) === req.user.id) {
+            return res.status(400).json({ error: "You cannot delete your own admin account." });
+        }
+
+        const user = await User.findByPk(id);
+        if (!user) {
+            return res.status(404).json({ error: "User not found." });
+        }
+
+        // Restrict deleting other admins (optional, but safer)
+        if (user.role === 'admin') {
+            return res.status(400).json({ error: "Administrator accounts cannot be deleted for safety." });
+        }
+
+        await user.destroy();
+        res.json({ message: "User removed successfully." });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // Notifications
@@ -339,6 +365,7 @@ app.get('/api/dashboard/stats', auth(), async (req, res) => {
         const products = await Product.findAll();
         const totalStock = products.reduce((acc, p) => acc + p.currentStock, 0);
         const stockValue = products.reduce((acc, p) => acc + (p.currentStock * p.price), 0);
+        const inventoryCostValue = products.reduce((acc, p) => acc + (p.currentStock * (p.costPrice || 0)), 0);
 
         // Target Logic
         const now = new Date();
@@ -364,19 +391,17 @@ app.get('/api/dashboard/stats', auth(), async (req, res) => {
         let startDate = new Date();
 
         if (range === '30d') {
-            startDate.setDate(today.getDate() - 29);
+            startDate.setDate(today.getDate() - 30);
+        } else if (range === '12m') {
+            startDate.setFullYear(today.getFullYear() - 1);
         } else if (range === 'all') {
             const firstTx = await StockTransaction.findOne({
                 where: isAdmin ? {} : { userId },
                 order: [['date', 'ASC']]
             });
-            if (firstTx) {
-                startDate = new Date(firstTx.date);
-            } else {
-                startDate.setDate(today.getDate() - 6);
-            }
+            startDate = firstTx ? new Date(firstTx.date) : new Date(today.getFullYear(), 0, 1);
         } else {
-            startDate.setDate(today.getDate() - 6);
+            startDate.setDate(today.getDate() - 7);
         }
         startDate.setHours(0, 0, 0, 0);
 
@@ -389,69 +414,88 @@ app.get('/api/dashboard/stats', auth(), async (req, res) => {
             order: [['date', 'ASC']]
         });
 
-        // Monthly Stats for Progress
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const monthlySoldWhere = {
-            date: { [Op.gte]: startOfMonth },
-            type: 'OUT'
-        };
-        if (!isAdmin) monthlySoldWhere.userId = userId;
+        // Financial Totals for Selected Range
+        let rangeRevenue = 0;
+        let rangeCOGS = 0;
+        let rangeInvestment = 0;
+        let rangeUnitsSold = 0;
 
-        const monthlyTransactions = await StockTransaction.findAll({
-            where: monthlySoldWhere,
-            include: [{ model: Product, as: 'Product' }]
+        transactions.forEach(t => {
+            if (t.type === 'OUT') {
+                rangeRevenue += (t.quantity * t.unitPrice);
+                rangeCOGS += (t.quantity * t.costPriceAtTime);
+                rangeUnitsSold += t.quantity;
+            } else if (t.type === 'IN') {
+                rangeInvestment += (t.quantity * t.unitPrice);
+            }
         });
 
-        const monthlyUnitsSold = monthlyTransactions.reduce((acc, t) => acc + t.quantity, 0);
-        const monthlyRevenue = monthlyTransactions.reduce((acc, t) => acc + (t.quantity * (t.Product?.price || 0)), 0);
-
+        // Trend Mapping
         const trendMap = {};
         const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-        const diffInDays = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 3600 * 24)) + 1;
-        const limitCount = range === 'all' ? Math.min(diffInDays, 90) : diffInDays;
+        if (range === '12m') {
+            // Group by Month
+            for (let i = 0; i < 12; i++) {
+                const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+                const key = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+                trendMap[key] = { name: d.toLocaleDateString('en-US', { month: 'short' }), sales: 0, stock: 0, unitsSold: 0, unitsAdded: 0 };
+            }
+        } else {
+            const diffInDays = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 3600 * 24)) + 1;
+            const limitCount = range === 'all' ? Math.min(diffInDays, 365) : diffInDays;
 
-        for (let i = 0; i < limitCount; i++) {
-            const d = new Date(startDate);
-            d.setDate(d.getDate() + i);
-            const key = d.toLocaleDateString('en-CA');
-            const dayName = days[d.getDay()];
-
-            const label = range === '30d' || range === 'all'
-                ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                : dayName;
-
-            trendMap[key] = { name: label, sales: 0, stock: 0, unitsSold: 0, unitsAdded: 0 };
+            for (let i = 0; i < limitCount; i++) {
+                const d = new Date(startDate);
+                d.setDate(d.getDate() + i);
+                const key = d.toLocaleDateString('en-CA');
+                const dayName = days[d.getDay()];
+                const label = range === '30d' || range === 'all'
+                    ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                    : dayName;
+                trendMap[key] = { name: label, sales: 0, stock: 0, unitsSold: 0, unitsAdded: 0 };
+            }
         }
 
         transactions.forEach(t => {
-            try {
-                const d = new Date(t.date);
-                const key = d.toLocaleDateString('en-CA');
-                if (trendMap[key]) {
-                    if (t.type === 'OUT') {
-                        trendMap[key].sales += (t.quantity * (t.Product?.price || 0));
-                        trendMap[key].unitsSold += t.quantity;
-                    } else if (t.type === 'IN') {
-                        trendMap[key].stock += (t.quantity * (t.Product?.price || 0));
-                        trendMap[key].unitsAdded += t.quantity;
-                    }
+            const d = new Date(t.date);
+            const key = range === '12m'
+                ? `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`
+                : d.toLocaleDateString('en-CA');
+
+            if (trendMap[key]) {
+                if (t.type === 'OUT') {
+                    trendMap[key].sales += (t.quantity * t.unitPrice);
+                    trendMap[key].unitsSold += t.quantity;
+                } else if (t.type === 'IN') {
+                    trendMap[key].stock += (t.quantity * t.unitPrice);
+                    trendMap[key].unitsAdded += t.quantity;
                 }
-            } catch (err) { }
+            }
         });
 
         const trendData = Object.values(trendMap);
+        if (range === '12m') trendData.reverse();
 
         res.json({
             totalProducts,
             totalStock,
-            stockValue,
+            stockValue, // Selling price value
+            inventoryCostValue, // Buying price value
             pendingApprovals,
             stockStatus,
             trendData,
+            financials: {
+                revenue: rangeRevenue,
+                cost: rangeCOGS,
+                profit: rangeRevenue - rangeCOGS,
+                investment: rangeInvestment,
+                unitsSold: rangeUnitsSold
+            },
             monthlyStats: {
-                unitsSold: monthlyUnitsSold,
-                revenue: monthlyRevenue,
+                // Keep for compatibility or targets
+                unitsSold: rangeUnitsSold, // or actual current month
+                revenue: rangeRevenue,
                 target: targetData ? {
                     units: targetData.targetUnits,
                     value: targetData.targetValue

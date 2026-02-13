@@ -24,11 +24,11 @@ export default function Layout() {
                     {/* Could add user profile pic here for mobile too */}
                 </div>
 
-                <div className="flex-1 p-4 md:p-8 overflow-x-hidden">
+                <main className="flex-1 p-6 md:p-12 overflow-y-auto">
                     <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
                         <Outlet />
                     </div>
-                </div>
+                </main>
             </div>
         </div>
     );

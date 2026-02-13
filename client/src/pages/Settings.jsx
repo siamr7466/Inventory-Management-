@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
-import { User, Shield, Mail, Lock, Plus, Users, UserPlus, Settings as SettingsIcon, Save } from 'lucide-react';
+import { User, Shield, Mail, Lock, Plus, Users, UserPlus, Settings as SettingsIcon, Save, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Settings() {
@@ -54,6 +54,17 @@ export default function Settings() {
             window.location.reload();
         } catch (e) {
             alert(e.response?.data?.error || 'Failed to update profile');
+        }
+    };
+
+    const handleDeleteUser = async (id, name) => {
+        if (confirm(`Are you sure you want to remove ${name}? This action cannot be undone.`)) {
+            try {
+                await api.delete(`/users/${id}`);
+                loadUsers();
+            } catch (e) {
+                alert(e.response?.data?.error || 'Failed to remove user');
+            }
         }
     };
 
@@ -198,7 +209,7 @@ export default function Settings() {
                             {loading ? (
                                 <div className="text-center py-10" style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Loading user directory...</div>
                             ) : users.map(u => (
-                                <div key={u.id} className="flex flex-col gap-4 p-4 rounded-2xl border transition-all group table-row-hover mb-4" style={{ background: 'var(--bg-app)', borderColor: 'var(--border)' }}>
+                                <div key={u.id} className="flex flex-col gap-5 p-6 rounded-2xl border transition-all group table-row-hover mb-6" style={{ background: 'var(--bg-app)', borderColor: 'var(--border)' }}>
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-4">
                                             <div className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-inner" style={{ background: 'var(--primary)', color: 'white' }}>
@@ -209,9 +220,20 @@ export default function Settings() {
                                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>{u.email}</div>
                                             </div>
                                         </div>
-                                        <span className={`badge ${u.role === 'admin' ? 'badge-primary' : 'badge-light'}`} style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                            {u.role}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`badge ${u.role === 'admin' ? 'badge-primary' : 'badge-light'}`} style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                                {u.role}
+                                            </span>
+                                            {currentUser.role === 'admin' && u.role === 'employee' && (
+                                                <button
+                                                    onClick={() => handleDeleteUser(u.id, u.name)}
+                                                    className="p-2 rounded-xl text-red-500 hover:bg-white hover:shadow-sm border border-transparent hover:border-red-100 transition-all"
+                                                    title="Remove Employee"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {currentUser.role === 'admin' && u.role === 'employee' && (

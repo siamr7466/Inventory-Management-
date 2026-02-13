@@ -32,7 +32,7 @@ export default function Dashboard() {
     ];
 
     return (
-        <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
+        <div style={{ animation: 'fadeIn 0.5s ease-out', paddingBottom: '4rem' }}>
             {/* Header */}
             <div className="flex justify-between items-center mb-10">
                 <div>
@@ -47,30 +47,76 @@ export default function Dashboard() {
                 >
                     <option value="7d">Last 7 Days</option>
                     <option value="30d">Last 30 Days</option>
+                    <option value="12m">Last 12 Months</option>
                     <option value="all">Lifetime</option>
                 </select>
             </div>
 
-            {/* Stat Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-                <StatCard title="Inventory Value" value={`৳${stats.stockValue.toLocaleString()}`} icon={<DollarSign size={22} />} color="emerald" />
-                <StatCard title="Total Products" value={stats.totalProducts} icon={<Package size={22} />} color="indigo" />
-                <StatCard title="Total Stock Units" value={stats.totalStock.toLocaleString()} icon={<Layers size={22} />} color="purple" />
-                <StatCard title="Pending Review" value={stats.pendingApprovals} icon={<AlertCircle size={22} />} color="amber" />
+            {/* Main Stat Matrix */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '2rem', marginBottom: '3.5rem' }}>
+                <StatCard title="Inventory Value (Sale)" value={`৳${stats.stockValue.toLocaleString()}`} icon={<DollarSign size={24} />} color="emerald" />
+                <StatCard title="Total Products" value={stats.totalProducts} icon={<Package size={24} />} color="indigo" />
+                <StatCard title="Total Units" value={stats.totalStock.toLocaleString()} icon={<Layers size={24} />} color="purple" />
+                <StatCard title="Pending Review" value={stats.pendingApprovals} icon={<AlertCircle size={24} />} color="amber" />
+            </div>
+
+            {/* Financial Performance Section */}
+            <div className="mb-14">
+                <div className="flex items-center gap-3 mb-8">
+                    <div style={{ padding: '10px', background: 'var(--primary-light)', borderRadius: '12px', color: 'var(--primary)', display: 'flex' }}>
+                        <TrendingUp size={22} />
+                    </div>
+                    <h3 className="font-bold text-2xl" style={{ color: 'var(--text-main)', margin: 0, letterSpacing: '-0.02em' }}>Financial Summary</h3>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
+                    <div className="card hover:translate-y-[-4px] transition-all card-padding" style={{ borderLeft: '6px solid #10b981', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <div className="text-[11px] font-bold text-muted uppercase tracking-[0.12em] mb-1">Total Sold (Revenue)</div>
+                        <div className="text-3xl font-black text-main" style={{ letterSpacing: '-0.03em' }}>৳{stats.financials?.revenue?.toLocaleString() || 0}</div>
+                        <div className="text-[12px] font-bold text-emerald mt-1" style={{ color: '#10b981' }}>{stats.financials?.unitsSold || 0} units processed</div>
+                    </div>
+
+                    <div className="card hover:translate-y-[-4px] transition-all card-padding" style={{ borderLeft: '6px solid #6366f1', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <div className="text-[11px] font-bold text-muted uppercase tracking-[0.12em] mb-1">Total Bought (Investment)</div>
+                        <div className="text-3xl font-black text-main" style={{ letterSpacing: '-0.03em' }}>৳{stats.financials?.investment?.toLocaleString() || 0}</div>
+                        <div className="text-[12px] font-bold text-muted mt-1">Stock acquired in period</div>
+                    </div>
+
+                    <div className="card hover:translate-y-[-4px] transition-all card-padding" style={{ borderLeft: '6px solid #f59e0b', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <div className="text-[11px] font-bold text-muted uppercase tracking-[0.12em] mb-1">Remaining Stock (Cost)</div>
+                        <div className="text-3xl font-black text-main" style={{ letterSpacing: '-0.03em' }}>৳{stats.inventoryCostValue?.toLocaleString() || 0}</div>
+                        <div className="text-[12px] font-bold text-muted mt-1">Current assets at cost</div>
+                    </div>
+
+                    <div className="card hover:translate-y-[-4px] transition-all card-padding" style={{
+                        borderLeft: `6px solid ${(stats.financials?.profit || 0) >= 0 ? '#10b981' : '#ef4444'}`,
+                        background: (stats.financials?.profit || 0) >= 0 ? 'var(--success-bg)' : 'var(--danger-bg)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem',
+                        position: 'relative',
+                        overflow: 'hidden'
+                    }}>
+                        <div className="text-[11px] font-bold uppercase tracking-[0.12em] mb-1" style={{ color: (stats.financials?.profit || 0) >= 0 ? '#065f46' : '#991b1b', opacity: 0.8 }}>Net Profit / Loss</div>
+                        <div className="text-3xl font-black" style={{ color: (stats.financials?.profit || 0) >= 0 ? '#065f46' : '#991b1b', letterSpacing: '-0.03em' }}>
+                            {(stats.financials?.profit || 0) >= 0 ? '+' : ''}৳{(stats.financials?.profit || 0).toLocaleString()}
+                        </div>
+                        <div className="text-[12px] font-bold mt-1" style={{ color: (stats.financials?.profit || 0) >= 0 ? '#047857' : '#b91c1c' }}>
+                            {(stats.financials?.profit || 0) >= 0 ? 'Profitable Performance' : 'Loss in Transactions'}
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Sales Progress Section for Employees */}
-            {!user.role === 'admin' && stats.monthlyStats && (
-                <SalesProgress stats={stats.monthlyStats} />
-            )}
-            {user.role === 'employee' && stats.monthlyStats && (
+            {user.role !== 'admin' && stats.monthlyStats && (
                 <SalesProgress stats={stats.monthlyStats} />
             )}
 
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 section-gap">
                 {/* Performance Chart */}
-                <div className="card lg:col-span-2" style={{ padding: '2rem' }}>
+                <div className="card lg:col-span-2 card-padding">
                     <div className="flex justify-between items-center mb-8">
                         <h3 className="font-bold text-lg flex items-center gap-2" style={{ color: 'var(--text-main)' }}>
                             <TrendingUp size={20} className="text-primary" /> Performance Analysis
@@ -103,7 +149,7 @@ export default function Dashboard() {
                         </div>
                     </div>
 
-                    <div style={{ height: '340px' }}>
+                    <div style={{ height: '340px', marginBottom: '1.5rem' }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={stats.trendData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                                 <defs>
@@ -147,7 +193,7 @@ export default function Dashboard() {
                 </div>
 
                 {/* Stock Health Chart */}
-                <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column' }}>
+                <div className="card card-padding" style={{ display: 'flex', flexDirection: 'column' }}>
                     <h3 className="font-bold text-lg mb-8" style={{ color: 'var(--text-main)' }}>Stock Health</h3>
 
                     <div style={{ height: '220px', position: 'relative', width: '100%' }}>
