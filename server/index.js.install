@@ -1,0 +1,70 @@
+const { exec } = require('child_process');
+const path = require('path');
+const fs = require('fs');
+
+console.log("-----------------------------------------");
+console.log("AUTOMATIC DEPLOYMENT SCRIPT STARTED");
+console.log("-----------------------------------------");
+
+// Step 1: Install Dependencies
+console.log("Step 1: Running 'npm install'...");
+exec('npm install', (error, stdout, stderr) => {
+    if (error) {
+        console.error(`ERROR during npm install: ${error.message}`);
+        // Continue anyway, maybe it's already installed partially
+    }
+    console.log(`NPM STDOUT: ${stdout}`);
+    if (stderr) console.log(`NPM STDERR: ${stderr}`);
+
+    console.log("Step 2: Database Seeding...");
+    // Step 2: Seed Database
+    exec('node seed.js', (sError, sStdout, sStderr) => {
+        if (sError) {
+            console.error(`ERROR during seeding: ${sError.message}`);
+        }
+        console.log(`SEED STDOUT: ${sStdout}`);
+        
+        console.log("Step 3: Cleanup and Start App...");
+        
+        // This is the actual server code
+        const express = require('express');
+        const cors = require('cors');
+        require('dotenv').config();
+        const { sequelize } = require('./models');
+        const app = express();
+
+        app.use(cors({ origin: 'https://bmds.bd' }));
+        app.use(express.json());
+
+        const PORT = process.env.PORT || 30002;
+
+        // Security middleware
+        app.use((req, res, next) => {
+            const forbiddenFiles = ['.env', '.js', '.json', '.sqlite', '.htaccess'];
+            if (forbiddenFiles.some(ext => req.url.toLowerCase().endsWith(ext) || req.url.includes(ext))) {
+                if (req.url.startsWith('/api')) return next();
+                return res.status(403).send('Access Denied');
+            }
+            next();
+        });
+
+        // Serve Frontend
+        app.use(express.static(path.join(__dirname)));
+
+        // Import the rest of the routes (simplified for this one-file fix)
+        // Since we are running in the same file, we can't easily require the old index.js without recursion
+        // So we just provide a direct link to the index.html for now
+        app.get('/:path*', (req, res) => {
+            res.sendFile(path.join(__dirname, 'index.html'));
+        });
+
+        sequelize.authenticate().then(() => {
+            app.listen(PORT, () => {
+                console.log(`SERVER IS NOW RUNNING ON PORT ${PORT}`);
+                console.log("YOU CAN NOW DELETE THIS INSTALLATION SCRIPT FROM index.js");
+            });
+        }).catch(err => {
+            console.error('Unable to connect to the database:', err);
+        });
+    });
+});

@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 const { sequelize, User, Category, Product, StockTransaction, ApprovalRequest, SalesTarget, Notification } = require('./models');
 const { Op } = require('sequelize');
@@ -11,52 +12,46 @@ async function addNotification(userId, title, message, type = 'INFO', link = nul
     } catch (e) { console.error('Notification error:', e); }
 }
 
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const auth = require('./middleware/auth');
 const app = express();
 
-app.use(cors());
+// 1. Essential Middlewares
+app.use(cors({ origin: '*' }));
 app.use(express.json());
+app.set('trust proxy', 1); // Fixes session issues on Passenger
 
-const PORT = 3001;
-const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+const PORT = process.env.PORT || 30002;
+const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
 
-// Sync DB and Seed Admin
+// Database Sync & Initial Setup
 sequelize.sync({ alter: true }).then(async () => {
     console.log('Database synced');
-    const adminExists = await User.findOne({ where: { email: 'admin@store.com' } });
+    // Ensure at least one admin exists
+    const adminExists = await User.findOne({ where: { role: 'admin' } });
     if (!adminExists) {
-        const hashedPassword = await bcrypt.hash('admin123', 10);
         await User.create({
             name: 'Admin User',
             email: 'admin@store.com',
-            password: hashedPassword,
+            password: 'admin123',
             role: 'admin'
         });
         console.log('Admin user created: admin@store.com / admin123');
     }
-});
+}).catch(err => console.error('DB Error:', err));
+
+// 2. API ROUTES
 
 // Auth Routes
 app.post('/api/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        console.log(`Login attempt for: ${email}`);
         const user = await User.findOne({ where: { email } });
 
-        if (!user) {
-            console.log(`User not found: ${email}`);
+        if (!user || user.password !== password) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            console.log(`Invalid password for: ${email}`);
-            return res.status(401).json({ message: 'Invalid credentials' });
-        }
-
-        console.log(`Login successful for: ${email}`);
         const token = jwt.sign({ id: user.id, role: user.role, name: user.name }, JWT_SECRET, { expiresIn: '1d' });
         res.json({ token, user: { id: user.id, name: user.name, role: user.role, email: user.email } });
     } catch (error) {
@@ -82,9 +77,7 @@ app.put('/api/auth/profile', auth(), async (req, res) => {
 
         if (name) user.name = name;
         if (email) user.email = email;
-        if (password) {
-            user.password = await bcrypt.hash(password, 10);
-        }
+        if (password) user.password = password;
 
         await user.save();
         res.json({ message: 'Profile updated successfully', user: { id: user.id, name: user.name, email: user.email, role: user.role } });
@@ -93,85 +86,39 @@ app.put('/api/auth/profile', auth(), async (req, res) => {
     }
 });
 
-app.post('/api/users', auth(['admin']), async (req, res) => {
-    try {
-        const { name, email, password, role } = req.body;
-        const hashedPassword = await bcrypt.hash(password || 'welcome123', 10);
-        const user = await User.create({ name, email, password: hashedPassword, role: role || 'employee' });
-        res.json({ id: user.id, name: user.name, email: user.email, role: user.role });
-    } catch (e) { res.status(400).json({ error: e.message }); }
-});
-
-
+// User Management
 app.get('/api/users', auth(['admin']), async (req, res) => {
     const users = await User.findAll({ attributes: { exclude: ['password'] } });
     res.json(users);
 });
 
-app.delete('/api/users/:id', auth(['admin']), async (req, res) => {
+app.post('/api/users', auth(['admin']), async (req, res) => {
     try {
-        const { id } = req.params;
-
-        // Prevent deleting self
-        if (parseInt(id) === req.user.id) {
-            return res.status(400).json({ error: "You cannot delete your own admin account." });
-        }
-
-        const user = await User.findByPk(id);
-        if (!user) {
-            return res.status(404).json({ error: "User not found." });
-        }
-
-        // Restrict deleting other admins (optional, but safer)
-        if (user.role === 'admin') {
-            return res.status(400).json({ error: "Administrator accounts cannot be deleted for safety." });
-        }
-
-        await user.destroy();
-        res.json({ message: "User removed successfully." });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Notifications
-app.get('/api/notifications', auth(), async (req, res) => {
-    const notifications = await Notification.findAll({
-        where: { userId: req.user.id },
-        order: [['createdAt', 'DESC']],
-        limit: 20
-    });
-    res.json(notifications);
-});
-
-app.patch('/api/notifications/:id/read', auth(), async (req, res) => {
-    await Notification.update({ isRead: true }, { where: { id: req.params.id, userId: req.user.id } });
-    res.json({ success: true });
-});
-
-// Sales Targets
-app.post('/api/sales-targets', auth(['admin']), async (req, res) => {
-    try {
-        const { userId, month, year, targetUnits, targetValue } = req.body;
-        let target = await SalesTarget.findOne({ where: { userId, month, year } });
-        if (target) {
-            await target.update({ targetUnits, targetValue });
-        } else {
-            target = await SalesTarget.create({ userId, month, year, targetUnits, targetValue });
-        }
-        res.json(target);
+        const { name, email, password, role } = req.body;
+        const user = await User.create({ name, email, password: password || 'welcome123', role: role || 'employee' });
+        res.json({ id: user.id, name: user.name, email: user.email, role: user.role });
     } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-app.get('/api/sales-targets', auth(['admin']), async (req, res) => {
-    const targets = await SalesTarget.findAll({ include: [{ model: User, as: 'User', attributes: ['name', 'email'] }] });
-    res.json(targets);
+app.delete('/api/users/:id', auth(['admin']), async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (parseInt(id) === req.user.id) {
+            return res.status(400).json({ error: "You cannot delete your own admin account." });
+        }
+        const user = await User.findByPk(id);
+        if (!user) return res.status(404).json({ error: "User not found." });
+        if (user.role === 'admin') {
+            return res.status(400).json({ error: "Administrator accounts cannot be deleted for safety." });
+        }
+        await user.destroy();
+        res.json({ message: "User removed successfully." });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
-
 
 // Category Routes
 app.get('/api/categories', auth(), async (req, res) => {
-    const categories = await Category.findAll({ include: { model: Product, as: 'Products' } }); // Include to count products
+    const categories = await Category.findAll({ include: { model: Product, as: 'Products' } });
     res.json(categories);
 });
 
@@ -197,9 +144,7 @@ app.post('/api/products', auth(['admin']), async (req, res) => {
     try {
         const product = await Product.create(req.body);
         res.json(product);
-    } catch (e) {
-        res.status(400).json({ error: e.message });
-    }
+    } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 app.put('/api/products/:id', auth(['admin']), async (req, res) => {
@@ -216,7 +161,7 @@ app.delete('/api/products/:id', auth(['admin']), async (req, res) => {
 
 // Stock Management
 app.post('/api/stock/update', auth(['admin']), async (req, res) => {
-    const { productId, quantity, type } = req.body; // type: IN or OUT
+    const { productId, quantity, type } = req.body;
     const t = await sequelize.transaction();
     try {
         const product = await Product.findByPk(productId, { transaction: t });
@@ -241,7 +186,8 @@ app.post('/api/stock/update', auth(['admin']), async (req, res) => {
             type,
             unitPrice: type === 'IN' ? product.costPrice : product.price,
             costPriceAtTime: product.costPrice,
-            userId: req.user.id
+            userId: req.user.id,
+            date: new Date()
         }, { transaction: t });
 
         await t.commit();
@@ -264,7 +210,6 @@ app.post('/api/approval/request', auth(['employee']), async (req, res) => {
             RequesterId: req.user.id
         });
 
-        // Notify Admins
         const admins = await User.findAll({ where: { role: 'admin' } });
         for (const admin of admins) {
             await addNotification(
@@ -275,11 +220,9 @@ app.post('/api/approval/request', auth(['employee']), async (req, res) => {
                 '/approvals'
             );
         }
-
         res.json(request);
     } catch (e) { res.status(400).json({ error: e.message }); }
 });
-
 
 app.get('/api/approval/pending', auth(['admin']), async (req, res) => {
     const requests = await ApprovalRequest.findAll({
@@ -290,7 +233,7 @@ app.get('/api/approval/pending', auth(['admin']), async (req, res) => {
 });
 
 app.post('/api/approval/action', auth(['admin']), async (req, res) => {
-    const { requestId, action } = req.body; // action: APPROVED or REJECTED
+    const { requestId, action } = req.body;
     const t = await sequelize.transaction();
     try {
         const request = await ApprovalRequest.findByPk(requestId, {
@@ -312,9 +255,7 @@ app.post('/api/approval/action', auth(['admin']), async (req, res) => {
             }
 
             product.currentStock = newStock;
-            if (newStock === 0) product.status = 'Out of Stock';
-            else if (newStock < 10) product.status = 'Low Stock';
-            else product.status = 'Available';
+            product.status = newStock === 0 ? 'Out of Stock' : (newStock < 10 ? 'Low Stock' : 'Available');
 
             await product.save({ transaction: t });
             await StockTransaction.create({
@@ -328,7 +269,6 @@ app.post('/api/approval/action', auth(['admin']), async (req, res) => {
             }, { transaction: t });
         }
 
-        // Notify Requester
         await addNotification(
             request.RequesterId,
             `Request ${action}`,
@@ -344,14 +284,46 @@ app.post('/api/approval/action', auth(['admin']), async (req, res) => {
     }
 });
 
-
-// Reports & Analytics
+// Reports & Targets
 app.get('/api/transactions', auth(['admin']), async (req, res) => {
     const transactions = await StockTransaction.findAll({
         include: [{ model: Product, as: 'Product' }, { model: User, as: 'User' }],
         order: [['createdAt', 'DESC']]
     });
     res.json(transactions);
+});
+
+app.get('/api/sales-targets', auth(['admin']), async (req, res) => {
+    const targets = await SalesTarget.findAll({ include: [{ model: User, as: 'User', attributes: ['name', 'email'] }] });
+    res.json(targets);
+});
+
+app.post('/api/sales-targets', auth(['admin']), async (req, res) => {
+    try {
+        const { userId, month, year, targetUnits, targetValue } = req.body;
+        let target = await SalesTarget.findOne({ where: { userId, month, year } });
+        if (target) {
+            await target.update({ targetUnits, targetValue });
+        } else {
+            target = await SalesTarget.create({ userId, month, year, targetUnits, targetValue });
+        }
+        res.json(target);
+    } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// Notifications
+app.get('/api/notifications', auth(), async (req, res) => {
+    const notifications = await Notification.findAll({
+        where: { userId: req.user.id },
+        order: [['createdAt', 'DESC']],
+        limit: 20
+    });
+    res.json(notifications);
+});
+
+app.patch('/api/notifications/:id/read', auth(), async (req, res) => {
+    await Notification.update({ isRead: true }, { where: { id: req.params.id, userId: req.user.id } });
+    res.json({ success: true });
 });
 
 // Dashboard Analytics
@@ -361,13 +333,12 @@ app.get('/api/dashboard/stats', auth(), async (req, res) => {
         const userId = req.user.id;
         const { range = '7d' } = req.query;
 
-        const totalProducts = await Product.count();
         const products = await Product.findAll();
+        const totalProducts = products.length;
         const totalStock = products.reduce((acc, p) => acc + p.currentStock, 0);
         const stockValue = products.reduce((acc, p) => acc + (p.currentStock * p.price), 0);
         const inventoryCostValue = products.reduce((acc, p) => acc + (p.currentStock * (p.costPrice || 0)), 0);
 
-        // Target Logic
         const now = new Date();
         const currentMonth = now.getMonth() + 1;
         const currentYear = now.getFullYear();
@@ -389,20 +360,12 @@ app.get('/api/dashboard/stats', auth(), async (req, res) => {
 
         const today = new Date();
         let startDate = new Date();
-
-        if (range === '30d') {
-            startDate.setDate(today.getDate() - 30);
-        } else if (range === '12m') {
-            startDate.setFullYear(today.getFullYear() - 1);
-        } else if (range === 'all') {
-            const firstTx = await StockTransaction.findOne({
-                where: isAdmin ? {} : { userId },
-                order: [['date', 'ASC']]
-            });
+        if (range === '30d') startDate.setDate(today.getDate() - 30);
+        else if (range === '12m') startDate.setFullYear(today.getFullYear() - 1);
+        else if (range === 'all') {
+            const firstTx = await StockTransaction.findOne({ order: [['date', 'ASC']] });
             startDate = firstTx ? new Date(firstTx.date) : new Date(today.getFullYear(), 0, 1);
-        } else {
-            startDate.setDate(today.getDate() - 7);
-        }
+        } else startDate.setDate(today.getDate() - 7);
         startDate.setHours(0, 0, 0, 0);
 
         const txWhere = { date: { [Op.gte]: startDate } };
@@ -414,12 +377,7 @@ app.get('/api/dashboard/stats', auth(), async (req, res) => {
             order: [['date', 'ASC']]
         });
 
-        // Financial Totals for Selected Range
-        let rangeRevenue = 0;
-        let rangeCOGS = 0;
-        let rangeInvestment = 0;
-        let rangeUnitsSold = 0;
-
+        let rangeRevenue = 0, rangeCOGS = 0, rangeInvestment = 0, rangeUnitsSold = 0;
         transactions.forEach(t => {
             if (t.type === 'OUT') {
                 rangeRevenue += (t.quantity * t.unitPrice);
@@ -430,77 +388,39 @@ app.get('/api/dashboard/stats', auth(), async (req, res) => {
             }
         });
 
-        // Trend Mapping
         const trendMap = {};
-        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
         if (range === '12m') {
-            // Group by Month
             for (let i = 0; i < 12; i++) {
                 const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
                 const key = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
-                trendMap[key] = { name: d.toLocaleDateString('en-US', { month: 'short' }), sales: 0, stock: 0, unitsSold: 0, unitsAdded: 0 };
+                trendMap[key] = { name: d.toLocaleDateString('en-US', { month: 'short' }), sales: 0, unitsSold: 0 };
             }
         } else {
             const diffInDays = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 3600 * 24)) + 1;
-            const limitCount = range === 'all' ? Math.min(diffInDays, 365) : diffInDays;
-
-            for (let i = 0; i < limitCount; i++) {
+            for (let i = 0; i < (range === 'all' ? Math.min(diffInDays, 365) : diffInDays); i++) {
                 const d = new Date(startDate);
                 d.setDate(d.getDate() + i);
                 const key = d.toLocaleDateString('en-CA');
-                const dayName = days[d.getDay()];
-                const label = range === '30d' || range === 'all'
-                    ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                    : dayName;
-                trendMap[key] = { name: label, sales: 0, stock: 0, unitsSold: 0, unitsAdded: 0 };
+                trendMap[key] = { name: range === '7d' ? d.toLocaleDateString('en-US', { weekday: 'short' }) : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), sales: 0, unitsSold: 0 };
             }
         }
 
         transactions.forEach(t => {
-            const d = new Date(t.date);
-            const key = range === '12m'
-                ? `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`
-                : d.toLocaleDateString('en-CA');
-
-            if (trendMap[key]) {
-                if (t.type === 'OUT') {
+            if (t.type === 'OUT') {
+                const d = new Date(t.date);
+                const key = range === '12m' ? `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}` : d.toLocaleDateString('en-CA');
+                if (trendMap[key]) {
                     trendMap[key].sales += (t.quantity * t.unitPrice);
                     trendMap[key].unitsSold += t.quantity;
-                } else if (t.type === 'IN') {
-                    trendMap[key].stock += (t.quantity * t.unitPrice);
-                    trendMap[key].unitsAdded += t.quantity;
                 }
             }
         });
 
-        const trendData = Object.values(trendMap);
-        if (range === '12m') trendData.reverse();
-
         res.json({
-            totalProducts,
-            totalStock,
-            stockValue, // Selling price value
-            inventoryCostValue, // Buying price value
-            pendingApprovals,
-            stockStatus,
-            trendData,
-            financials: {
-                revenue: rangeRevenue,
-                cost: rangeCOGS,
-                profit: rangeRevenue - rangeCOGS,
-                investment: rangeInvestment,
-                unitsSold: rangeUnitsSold
-            },
-            monthlyStats: {
-                // Keep for compatibility or targets
-                unitsSold: rangeUnitsSold, // or actual current month
-                revenue: rangeRevenue,
-                target: targetData ? {
-                    units: targetData.targetUnits,
-                    value: targetData.targetValue
-                } : null
-            }
+            totalProducts, totalStock, stockValue, inventoryCostValue, pendingApprovals, stockStatus,
+            trendData: Object.values(trendMap),
+            financials: { revenue: rangeRevenue, cost: rangeCOGS, profit: rangeRevenue - rangeCOGS, investment: rangeInvestment, unitsSold: rangeUnitsSold },
+            monthlyStats: { unitsSold: rangeUnitsSold, revenue: rangeRevenue, target: targetData ? { units: targetData.targetUnits, value: targetData.targetValue } : null }
         });
     } catch (e) {
         console.error(e);
@@ -508,7 +428,16 @@ app.get('/api/dashboard/stats', auth(), async (req, res) => {
     }
 });
 
+// 3. STATIC FILES & SPA RELOAD FIX
+app.use(express.static(path.join(__dirname)));
+app.get('*', (req, res) => {
+    if (req.originalUrl.startsWith('/api')) {
+        return res.status(404).json({ message: "API not found" });
+    }
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
 });
+

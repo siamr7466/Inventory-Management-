@@ -1,24 +1,21 @@
 const { sequelize, User, Category, Product, StockTransaction, ApprovalRequest } = require('./models');
-const bcrypt = require('bcryptjs');
 
 const seed = async () => {
     await sequelize.sync({ force: true });
     console.log('Database Reset');
 
     // Users
-    const password = await bcrypt.hash('admin123', 10);
     const admin = await User.create({
         name: 'Admin User',
-        email: 'admin@store.com',
-        password,
+        email: 'admin@test.com',
+        password: 'password123',
         role: 'admin'
     });
 
-    const empPassword = await bcrypt.hash('employee123', 10);
     const employee = await User.create({
         name: 'John Doe',
-        email: 'employee@store.com',
-        password: empPassword,
+        email: 'employee@test.com',
+        password: 'password123',
         role: 'employee'
     });
 

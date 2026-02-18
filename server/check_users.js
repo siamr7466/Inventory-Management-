@@ -1,5 +1,4 @@
 const { User } = require('./models');
-const bcrypt = require('bcryptjs');
 
 async function check() {
     const users = await User.findAll();

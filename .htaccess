@@ -1,0 +1,16 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # 1. API Reverse Proxy
+  # Redirects https://bmds.bd/api to http://localhost:30002/api
+  RewriteRule ^api/(.*) http://localhost:30002/api/$1 [P,L]
+
+  # 2. React Router Support
+  # Redirects all other traffic to index.html
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME} !-l
+  RewriteRule . /index.html [L]
+</IfModule>

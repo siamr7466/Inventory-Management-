@@ -3,7 +3,15 @@ const path = require('path');
 
 let sequelize;
 
-if (process.env.DATABASE_URL) {
+if (process.env.DB_NAME) {
+  // Priority: User provided MySQL credentials
+  sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASS, {
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 3306,
+    dialect: 'mysql',
+    logging: false
+  });
+} else if (process.env.DATABASE_URL) {
   const isPostgres = process.env.DATABASE_URL.startsWith('postgres');
   const isMysql = process.env.DATABASE_URL.startsWith('mysql');
 
@@ -25,7 +33,6 @@ if (process.env.DATABASE_URL) {
       logging: false
     });
   } else {
-    // Default to existing logic or handle other types
     sequelize = new Sequelize(process.env.DATABASE_URL, {
       logging: false
     });
